@@ -44,7 +44,7 @@ export class Prism {
 		return JSON.parse(this.sodium.to_string(plainText));
 	}
 
-	public symmetricEncrypt(payloadObj: any, key: any = null): any {
+	public symmetricEncrypt(data: any, key: any = null): any {
 		if (key == null) {
 			key = this.sodium.crypto_aead_chacha20poly1305_keygen();
 		} else {
@@ -57,7 +57,7 @@ export class Prism {
 
 		let cypherText: any =
 			this.sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
-				JSON.stringify(payloadObj),
+				JSON.stringify(data),
 				null,
 				null,
 				nonce,
@@ -139,90 +139,117 @@ export class Prism {
 		return this.sodium.to_base64(derivedKey);
 	}
 
-	public encryptPrismObject(
-		data: any,
-		sharedSessionKeySend: any,
-		recipientPublicKey: any
-	): any {
+	public prismEncrypt_Layer1(data: any, sharedSessionKeySend: any): any {
 		// Layer 1
 		// Encrypt data object symmetrically if type is MESSAGE.
-		let layer_1_cypherText: any = this.symmetricEncrypt(
-			data,
-			sharedSessionKeySend
-		);
+		const symmetricEncrypt = this.symmetricEncrypt(data, sharedSessionKeySend);
+		return {
+			nonce: symmetricEncrypt.nonce,
+			cypherText: symmetricEncrypt.cypherText,
+		};
+	}
 
+	public prismEncrypt_Layer2(
+		type: string,
+		count: number,
+		layer_1_nonce: any,
+		layer_1_cypherText: any,
+		recipientPublicIdentityKey: any
+	): any {
 		// Layer 2
-		// Encrypt payload generated in layer 1 with crypto_secret_box to verify identity and encrypt sensitive data.
+		// Encrypt data generated in layer 1 with crypto_secret_box to verify identity and encrypt sensitive data.
 		let layer_2_nonce = this.sodium.randombytes_buf(
 			this.sodium.crypto_box_NONCEBYTES
 		);
 
-		let layer_2_cypherText: any = this.sodium.crypto_box_easy(
+		let layer_2_cypherText = this.sodium.crypto_box_easy(
 			JSON.stringify({
-				type: 'M',
+				type: type,
 				date: Date.now(),
-				nonce: layer_1_cypherText.nonce,
-				data: layer_1_cypherText.cypherText,
+				count: count,
+				nonce: layer_1_nonce,
+				data: layer_1_cypherText,
 			}),
 			layer_2_nonce,
-			this.sodium.from_base64(recipientPublicKey),
+			this.sodium.from_base64(recipientPublicIdentityKey),
 			this.sodium.from_base64(this.IdentityKeys.private)
 		);
 
+		return {
+			nonce: layer_2_nonce,
+			cypherText: layer_2_cypherText,
+		};
+	}
+	public prismEncrypt_Layer3(layer_2_nonce: any, layer_2_cypherText: any): any {
 		// Layer 3
-		// Encrypt payload generated in layer 2 with a random symmetric key.
-		let layer_3_cypherText: any = this.symmetricEncrypt({
+		// Encrypt data generated in layer 2 with a random symmetric key.
+		return this.symmetricEncrypt({
 			from: this.IdentityKeys.public,
 			nonce: this.sodium.to_base64(layer_2_nonce),
-			payload: this.sodium.to_base64(layer_2_cypherText),
+			data: this.sodium.to_base64(layer_2_cypherText),
 		});
-
+	}
+	public prismEncrypt_Layer4(
+		layer_3_key: any,
+		layer_3_nonce: any,
+		layer_3_cypherText: any,
+		recipientPublicIdentityKey: any
+	): any {
 		// Layer 4
 		// Encrypt layer 3 obj with recipients public key.
-		let layer_4_cypher: any = this.publicEncrypt(
+		let layer_4_cypherText: any = this.publicEncrypt(
 			{
-				key: layer_3_cypherText.key,
-				nonce: layer_3_cypherText.nonce,
+				key: layer_3_key,
+				nonce: layer_3_nonce,
 			},
-			recipientPublicKey
+			recipientPublicIdentityKey
 		);
 
-		return `${layer_4_cypher}:${layer_3_cypherText.cypherText}`;
+		return `${layer_4_cypherText}:${layer_3_cypherText}`;
 	}
 
-	public decryptPrismObject(
-		dataObj: String,
+	public prismDecrypt_Layer1(
+		nonce: any,
+		cypherText: any,
 		sharedSessionKeyReceive: any
 	): any {
-		let [layer_4_cypher, layer_3_cypherTextCypherText] = dataObj.split(':');
+		return this.symmetricDecrypt(sharedSessionKeyReceive, nonce, cypherText);
+	}
 
-		let layer_4_dataObj = this.publicDecrypt(layer_4_cypher);
-		let layer_3_dataObj = this.symmetricDecrypt(
-			layer_4_dataObj.key,
-			layer_4_dataObj.nonce,
-			layer_3_cypherTextCypherText
-		);
-		let layer_2_dataObj = JSON.parse(
+	public prismDecrypt_Layer2(nonce: any, cypherText: any, from: any): any {
+		const symmetricDecrypted = JSON.parse(
 			this.sodium.to_string(
 				this.sodium.crypto_box_open_easy(
-					this.sodium.from_base64(layer_3_dataObj.payload),
-					this.sodium.from_base64(layer_3_dataObj.nonce),
-					this.sodium.from_base64(layer_3_dataObj.from),
+					this.sodium.from_base64(cypherText),
+					this.sodium.from_base64(nonce),
+					this.sodium.from_base64(from),
 					this.sodium.from_base64(this.IdentityKeys.private)
 				)
 			)
 		);
-		let data = this.symmetricDecrypt(
-			sharedSessionKeyReceive,
-			layer_2_dataObj.nonce,
-			layer_2_dataObj.data
-		);
-
 		return {
-			from: layer_3_dataObj.from,
-			type: layer_2_dataObj.type,
-			date: layer_2_dataObj.date,
-			data: data,
+			type: symmetricDecrypted.type,
+			count: symmetricDecrypted.count,
+			date: symmetricDecrypted.date,
+			nonce: symmetricDecrypted.nonce,
+			cypherText: symmetricDecrypted.data,
+		};
+	}
+	public prismDecrypt_Layer3(nonce: any, key: any, cypherText: any): any {
+		let symmetricDecrypt = this.symmetricDecrypt(key, nonce, cypherText);
+		return {
+			from: symmetricDecrypt.from,
+			nonce: symmetricDecrypt.nonce,
+			cypherText: symmetricDecrypt.data,
+		};
+	}
+	public prismDecrypt_Layer4(dataObj: any): any {
+		let [layer_4_cypherText, layer_3_cypherText] = dataObj.split(':');
+		let layer_4_dataObj = this.publicDecrypt(layer_4_cypherText);
+		return {
+			nonce: layer_4_dataObj.nonce,
+			key: layer_4_dataObj.key,
+			cypherText: layer_3_cypherText,
 		};
 	}
 }
