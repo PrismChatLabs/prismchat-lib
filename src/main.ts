@@ -2,7 +2,7 @@ const _sodium = require('libsodium-wrappers');
 
 export class Prism {
 	private _IdentityKeys: any;
-	private sodium: any;
+	public sodium: any;
 
 	constructor(publicIdentityKey: any = null, privateIdentityKey: any = null) {
 		this._IdentityKeys = {
