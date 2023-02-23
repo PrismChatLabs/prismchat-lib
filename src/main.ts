@@ -44,6 +44,36 @@ export class Prism {
 		return JSON.parse(this.sodium.to_string(plainText));
 	}
 
+	public boxEncrypt(data: any, recipientPublicKey: any): any {
+		let nonce = this.sodium.randombytes_buf(this.sodium.crypto_box_NONCEBYTES);
+
+		let cypherText = this.sodium.crypto_box_easy(
+			JSON.stringify(data),
+			nonce,
+			this.sodium.from_base64(recipientPublicKey),
+			this.sodium.from_base64(this.IdentityKeys.private)
+		);
+
+		return {
+			nonce: this.sodium.to_base64(nonce),
+			cypherText: this.sodium.to_base64(cypherText),
+		};
+	}
+
+	public boxDecrypt(cypherText: any, nonce: any, from: any): any {
+		const data = JSON.parse(
+			this.sodium.to_string(
+				this.sodium.crypto_box_open_easy(
+					this.sodium.from_base64(cypherText),
+					this.sodium.from_base64(nonce),
+					this.sodium.from_base64(from),
+					this.sodium.from_base64(this.IdentityKeys.private)
+				)
+			)
+		);
+		return data;
+	}
+
 	public symmetricEncrypt(data: any, key: any = null): any {
 		if (key == null) {
 			key = this.sodium.crypto_aead_chacha20poly1305_keygen();
@@ -176,8 +206,8 @@ export class Prism {
 		);
 
 		return {
-			nonce: layer_2_nonce,
-			cypherText: layer_2_cypherText,
+			nonce: this.sodium.to_base64(layer_2_nonce),
+			cypherText: this.sodium.to_base64(layer_2_cypherText),
 		};
 	}
 	public prismEncrypt_Layer3(layer_2_nonce: any, layer_2_cypherText: any): any {
@@ -185,8 +215,8 @@ export class Prism {
 		// Encrypt data generated in layer 2 with a random symmetric key.
 		return this.symmetricEncrypt({
 			from: this.IdentityKeys.public,
-			nonce: this.sodium.to_base64(layer_2_nonce),
-			data: this.sodium.to_base64(layer_2_cypherText),
+			nonce: layer_2_nonce,
+			data: layer_2_cypherText,
 		});
 	}
 	public prismEncrypt_Layer4(

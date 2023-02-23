@@ -35,6 +35,21 @@ test('Symmetric Encrypt and Decrypt', async () => {
 	expect(decryptedData).toStrictEqual(data);
 });
 
+test('Box Encrypt and Decrypt', async () => {
+	let data = {
+		message: 'Hello World!',
+	};
+
+	let encryptedData: any = Alice.boxEncrypt(data, Bob.IdentityKeys.public);
+	let decryptedData: any = Bob.boxDecrypt(
+		encryptedData.cypherText,
+		encryptedData.nonce,
+		Alice.IdentityKeys.public
+	);
+
+	expect(decryptedData).toStrictEqual(data);
+});
+
 test('Public Encrypt and Decrypt', async () => {
 	let dataObj = {
 		message: 'Hello World!',
