@@ -13,3 +13,15 @@ npm run build
 ``` bash
 npm run test
 ```
+
+## Publish
+
+1. Commit all code and merge up to master.
+2. Run prepublish script to run tests and test a build.
+3. Update version in ```package.json```.
+4. Publish to NPM.
+
+``` bash
+npm run prepublish
+npm publish
+```
