@@ -24,11 +24,11 @@ export class Prism {
 		let { publicKey, privateKey } = this.sodium.crypto_box_keypair();
 		this._IdentityKeys.public = this.sodium.to_base64(
 			publicKey,
-			this.sodium.base64_variants.ORIGINAL
+			this.sodium.base64_variants.URLSAFE_NO_PADDING
 		);
 		this._IdentityKeys.private = this.sodium.to_base64(
 			privateKey,
-			this.sodium.base64_variants.ORIGINAL
+			this.sodium.base64_variants.URLSAFE_NO_PADDING
 		);
 		return this.IdentityKeys;
 	}
@@ -38,25 +38,28 @@ export class Prism {
 			JSON.stringify(message),
 			this.sodium.from_base64(
 				recipientPublicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			)
 		);
 		return this.sodium.to_base64(
 			cypherText,
-			this.sodium.base64_variants.ORIGINAL
+			this.sodium.base64_variants.URLSAFE_NO_PADDING
 		);
 	}
 
 	public publicDecrypt(cypherText: any): any {
 		let plainText = this.sodium.crypto_box_seal_open(
-			this.sodium.from_base64(cypherText, this.sodium.base64_variants.ORIGINAL),
+			this.sodium.from_base64(
+				cypherText,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			),
 			this.sodium.from_base64(
 				this.IdentityKeys.public,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				this.IdentityKeys.private,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			)
 		);
 		return JSON.parse(this.sodium.to_string(plainText));
@@ -70,19 +73,22 @@ export class Prism {
 			nonce,
 			this.sodium.from_base64(
 				recipientPublicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				this.IdentityKeys.private,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			)
 		);
 
 		return {
-			nonce: this.sodium.to_base64(nonce, this.sodium.base64_variants.ORIGINAL),
+			nonce: this.sodium.to_base64(
+				nonce,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			),
 			cypherText: this.sodium.to_base64(
 				cypherText,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 		};
 	}
@@ -93,13 +99,19 @@ export class Prism {
 				this.sodium.crypto_box_open_easy(
 					this.sodium.from_base64(
 						cypherText,
-						this.sodium.base64_variants.ORIGINAL
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
 					),
-					this.sodium.from_base64(nonce, this.sodium.base64_variants.ORIGINAL),
-					this.sodium.from_base64(from, this.sodium.base64_variants.ORIGINAL),
+					this.sodium.from_base64(
+						nonce,
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
+					),
+					this.sodium.from_base64(
+						from,
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
+					),
 					this.sodium.from_base64(
 						this.IdentityKeys.private,
-						this.sodium.base64_variants.ORIGINAL
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
 					)
 				)
 			)
@@ -111,7 +123,10 @@ export class Prism {
 		if (key == null) {
 			key = this.sodium.crypto_aead_chacha20poly1305_keygen();
 		} else {
-			key = this.sodium.from_base64(key, this.sodium.base64_variants.ORIGINAL);
+			key = this.sodium.from_base64(
+				key,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			);
 		}
 
 		let nonce: any = this.sodium.randombytes_buf(
@@ -128,11 +143,17 @@ export class Prism {
 			);
 
 		return {
-			key: this.sodium.to_base64(key, this.sodium.base64_variants.ORIGINAL),
-			nonce: this.sodium.to_base64(nonce, this.sodium.base64_variants.ORIGINAL),
+			key: this.sodium.to_base64(
+				key,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			),
+			nonce: this.sodium.to_base64(
+				nonce,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			),
 			cypherText: this.sodium.to_base64(
 				cypherText,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 		};
 	}
@@ -140,10 +161,19 @@ export class Prism {
 	public symmetricDecrypt(key: any, nonce: any, cypherText: any): any {
 		let message: any = this.sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
 			null,
-			this.sodium.from_base64(cypherText, this.sodium.base64_variants.ORIGINAL),
+			this.sodium.from_base64(
+				cypherText,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			),
 			null,
-			this.sodium.from_base64(nonce, this.sodium.base64_variants.ORIGINAL),
-			this.sodium.from_base64(key, this.sodium.base64_variants.ORIGINAL)
+			this.sodium.from_base64(
+				nonce,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			),
+			this.sodium.from_base64(
+				key,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			)
 		);
 		return JSON.parse(this.sodium.to_string(message));
 	}
@@ -153,11 +183,11 @@ export class Prism {
 		return {
 			publicKey: this.sodium.to_base64(
 				publicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			privateKey: this.sodium.to_base64(
 				privateKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 		};
 	}
@@ -170,26 +200,26 @@ export class Prism {
 		let { sharedRx, sharedTx }: any = this.sodium.crypto_kx_client_session_keys(
 			this.sodium.from_base64(
 				sessionPublicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				sessionPrivateKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				partnerPublicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			)
 		);
 
 		return {
 			receiveKey: this.sodium.to_base64(
 				sharedRx,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			sendKey: this.sodium.to_base64(
 				sharedTx,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 		};
 	}
@@ -202,26 +232,26 @@ export class Prism {
 		let { sharedRx, sharedTx }: any = this.sodium.crypto_kx_server_session_keys(
 			this.sodium.from_base64(
 				sessionPublicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				sessionPrivateKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				partnerPublicKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			)
 		);
 
 		return {
 			receiveKey: this.sodium.to_base64(
 				sharedRx,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			sendKey: this.sodium.to_base64(
 				sharedTx,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 		};
 	}
@@ -235,12 +265,15 @@ export class Prism {
 			this.sodium.crypto_kdf_KEYBYTES,
 			count,
 			context,
-			this.sodium.from_base64(key, this.sodium.base64_variants.ORIGINAL)
+			this.sodium.from_base64(
+				key,
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
+			)
 		);
 
 		return this.sodium.to_base64(
 			derivedKey,
-			this.sodium.base64_variants.ORIGINAL
+			this.sodium.base64_variants.URLSAFE_NO_PADDING
 		);
 	}
 
@@ -278,22 +311,22 @@ export class Prism {
 			layer_2_nonce,
 			this.sodium.from_base64(
 				recipientPublicIdentityKey,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			this.sodium.from_base64(
 				this.IdentityKeys.private,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			)
 		);
 
 		return {
 			nonce: this.sodium.to_base64(
 				layer_2_nonce,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 			cypherText: this.sodium.to_base64(
 				layer_2_cypherText,
-				this.sodium.base64_variants.ORIGINAL
+				this.sodium.base64_variants.URLSAFE_NO_PADDING
 			),
 		};
 	}
@@ -339,13 +372,19 @@ export class Prism {
 				this.sodium.crypto_box_open_easy(
 					this.sodium.from_base64(
 						cypherText,
-						this.sodium.base64_variants.ORIGINAL
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
 					),
-					this.sodium.from_base64(nonce, this.sodium.base64_variants.ORIGINAL),
-					this.sodium.from_base64(from, this.sodium.base64_variants.ORIGINAL),
+					this.sodium.from_base64(
+						nonce,
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
+					),
+					this.sodium.from_base64(
+						from,
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
+					),
 					this.sodium.from_base64(
 						this.IdentityKeys.private,
-						this.sodium.base64_variants.ORIGINAL
+						this.sodium.base64_variants.URLSAFE_NO_PADDING
 					)
 				)
 			)
