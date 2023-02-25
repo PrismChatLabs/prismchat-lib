@@ -31,7 +31,7 @@
     "ecc"
   ],
   "author": "Jack Woodrow",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/jwoodrow99/prismchat-lib/issues"
   },
