@@ -138,29 +138,3 @@ const decryptedData = Bob.prismDecrypt_Layer1(
 Some useful notes when working with prismchat-lib.
 
 * All base64 encoding is done using the ```URLSAFE_NO_PADDING``` variant. This is the output and expected input of any base64 encoding.
-
-## Development
-
-### Compile
-
-``` bash
-npm run build
-```
-
-### Test
-
-``` bash
-npm run test
-```
-
-### Publish
-
-1. Commit all code and merge up to master.
-2. Run prepublish script to run tests and test a build.
-3. Update version in ```package.json```.
-4. Publish to NPM.
-
-``` bash
-npm run prepublish
-npm publish
-```
