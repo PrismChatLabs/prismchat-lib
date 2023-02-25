@@ -1,5 +1,7 @@
 # Prism Lib
 
+Checkout our **[live web demo!](https://app-demo.prism.chat/)**
+
 The Prism Chat Library for E2E, anonymous and decentralized communication built on [libsodium](https://doc.libsodium.org/). We have used [libsodium](https://doc.libsodium.org/) as the base for all of our cryptographic operations as it gives and easy to use interface as well as known security. This allows us to focus on the higher level cryptographic logic that makes Prism what it is.
 
 ## Usage
