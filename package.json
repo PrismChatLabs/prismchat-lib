@@ -1,18 +1,39 @@
 {
   "name": "prismchat-lib",
-  "version": "0.4.0",
-  "description": "",
+  "version": "0.4.1",
+  "description": "The Prism Chat Library for E2E and anonymous communication built on libsodium",
   "main": "build/main.js",
   "types": "build/main.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jwoodrow99/prismchat-lib.git"
+  },
   "scripts": {
     "build": "rm -rf ./build; npx tsc",
     "build-package": "npm run build; rm -rf ./build-package; mkdir ./build-package; npm pack --pack-destination='./build-package'",
     "test": "jest --verbose",
     "prepublish": "npm run test; npm run build-package"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "crypto",
+    "sodium",
+    "libsodium",
+    "nacl",
+    "chacha20",
+    "poly1305",
+    "curve25519",
+    "ed25519",
+    "blake2",
+    "siphash",
+    "argon2",
+    "ecc"
+  ],
+  "author": "Jack Woodrow",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jwoodrow99/prismchat-lib/issues"
+  },
+  "homepage": "https://github.com/jwoodrow99/prismchat-lib",
   "devDependencies": {
     "@types/jest": "^29.4.0",
     "@types/libsodium-wrappers": "^0.7.10",
