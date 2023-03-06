@@ -6,7 +6,7 @@
   "types": "build/main.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jwoodrow99/prismchat-lib.git"
+    "url": "https://github.com/PrismChatLabs/prismchat-lib.git"
   },
   "scripts": {
     "build": "rm -rf ./build; npx tsc",
@@ -37,9 +37,9 @@
   "author": "Jack Woodrow",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jwoodrow99/prismchat-lib/issues"
+    "url": "https://github.com/PrismChatLabs/prismchat-lib/issues"
   },
-  "homepage": "https://github.com/jwoodrow99/prismchat-lib",
+  "homepage": "https://github.com/PrismChatLabs/prismchat-lib",
   "devDependencies": {
     "@types/jest": "^29.4.0",
     "@types/libsodium-wrappers": "^0.7.10",
