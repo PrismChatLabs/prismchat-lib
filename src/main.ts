@@ -1,14 +1,14 @@
 const _sodium = require('libsodium-wrappers');
 
 export class Prism {
-	private _IdentityKeys: any;
+	private _Ipk: any;
+	private _Isk: any;
+
 	public sodium: any;
 
-	constructor(publicIdentityKey: any = null, privateIdentityKey: any = null) {
-		this._IdentityKeys = {
-			public: publicIdentityKey,
-			private: privateIdentityKey,
-		};
+	constructor(Ipk: any = null, Isk: any = null) {
+		this._Ipk = Ipk;
+		this._Isk = Isk;
 	}
 
 	async init() {
@@ -16,126 +16,99 @@ export class Prism {
 		this.sodium = _sodium;
 	}
 
-	public get IdentityKeys() {
-		return this._IdentityKeys;
+	public get Ipk() {
+		return this._Ipk;
+	}
+
+	public get Isk() {
+		return this._Isk;
+	}
+
+	public toBase64(data: any): any{
+		return this.sodium.to_base64(
+			data,
+			this.sodium.base64_variants.URLSAFE_NO_PADDING
+		);
+	}
+
+	public fromBase64(data: any): any{
+		return this.sodium.from_base64(
+			data,
+			this.sodium.base64_variants.URLSAFE_NO_PADDING
+		);
 	}
 
 	public generateIdentityKeys(): any {
-		let { publicKey, privateKey } = this.sodium.crypto_box_keypair();
-		this._IdentityKeys.public = this.sodium.to_base64(
-			publicKey,
-			this.sodium.base64_variants.URLSAFE_NO_PADDING
-		);
-		this._IdentityKeys.private = this.sodium.to_base64(
-			privateKey,
-			this.sodium.base64_variants.URLSAFE_NO_PADDING
-		);
-		return this.IdentityKeys;
-	}
-
-	public publicEncrypt(message: any, recipientPublicKey: any): any {
-		let cypherText = this.sodium.crypto_box_seal(
-			JSON.stringify(message),
-			this.sodium.from_base64(
-				recipientPublicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
-		);
-		return this.sodium.to_base64(
-			cypherText,
-			this.sodium.base64_variants.URLSAFE_NO_PADDING
-		);
-	}
-
-	public publicDecrypt(cypherText: any): any {
-		let plainText = this.sodium.crypto_box_seal_open(
-			this.sodium.from_base64(
-				cypherText,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				this.IdentityKeys.public,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				this.IdentityKeys.private,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
-		);
-		return JSON.parse(this.sodium.to_string(plainText));
-	}
-
-	public boxEncrypt(data: any, recipientPublicKey: any): any {
-		let nonce = this.sodium.randombytes_buf(this.sodium.crypto_box_NONCEBYTES);
-
-		let cypherText = this.sodium.crypto_box_easy(
-			JSON.stringify(data),
-			nonce,
-			this.sodium.from_base64(
-				recipientPublicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				this.IdentityKeys.private,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
-		);
-
+		let {publicKey: Ipk, privateKey: Isk} = this.sodium.crypto_box_keypair();
+		this._Ipk = this.toBase64(Ipk);
+		this._Isk = this.toBase64(Isk);
 		return {
-			nonce: this.sodium.to_base64(
-				nonce,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			cypherText: this.sodium.to_base64(
-				cypherText,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			Ipk: this._Ipk,
+			Isk: this._Ipk
 		};
 	}
 
-	public boxDecrypt(cypherText: any, nonce: any, from: any): any {
+	public unauthenticatedAsymetricEncrypt(packet: any, recipientIpk: any): any {
+		let cipher = this.sodium.crypto_box_seal(
+			JSON.stringify(packet),
+			this.fromBase64(recipientIpk)
+		);
+		return this.toBase64(cipher);
+	}
+
+	public unauthenticatedAsymetricDecrypt(cipher: any): any {
+		let payload = this.sodium.crypto_box_seal_open(
+			this.fromBase64(cipher),
+			this.fromBase64(this.Ipk),
+			this.fromBase64(this.Isk)
+		);
+		return JSON.parse(this.sodium.to_string(payload));
+	}
+
+	public authenticatedAsymetricEncrypt(packet: any, recipientIpk: any): any {
+		let nonce = this.sodium.randombytes_buf(this.sodium.crypto_box_NONCEBYTES);
+
+		let cipher = this.sodium.crypto_box_easy(
+			JSON.stringify(packet),
+			nonce,
+			this.fromBase64(recipientIpk),
+			this.fromBase64(this.Isk)
+		);
+
+		return {
+			nonce: this.toBase64(nonce),
+			cipher: this.toBase64(cipher)
+		};
+	}
+
+	public authenticatedAsymetricDecrypt(cipher: any, nonce: any, senderIpk: any): any {
 		const data = JSON.parse(
 			this.sodium.to_string(
 				this.sodium.crypto_box_open_easy(
-					this.sodium.from_base64(
-						cypherText,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					),
-					this.sodium.from_base64(
-						nonce,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					),
-					this.sodium.from_base64(
-						from,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					),
-					this.sodium.from_base64(
-						this.IdentityKeys.private,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					)
+					this.fromBase64(cipher),
+					this.fromBase64(nonce),
+					this.fromBase64(senderIpk),
+					this.fromBase64(this.Isk)
 				)
 			)
 		);
 		return data;
 	}
 
-	public symmetricEncrypt(data: any, key: any = null): any {
+	public symmetricEncrypt(payload: any, key: any = null): any {
 		if (key == null) {
-			key = this.sodium.crypto_aead_chacha20poly1305_keygen();
+			key = this.sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 		} else {
-			key = this.sodium.from_base64(
-				key,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			);
+			key = this.fromBase64(key);
 		}
 
 		let nonce: any = this.sodium.randombytes_buf(
 			this.sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES
 		);
 
-		let cypherText: any =
+		let cipher: any =
 			this.sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
-				JSON.stringify(data),
+				JSON.stringify(payload),
 				null,
 				null,
 				nonce,
@@ -143,275 +116,150 @@ export class Prism {
 			);
 
 		return {
-			key: this.sodium.to_base64(
-				key,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			nonce: this.sodium.to_base64(
-				nonce,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			cypherText: this.sodium.to_base64(
-				cypherText,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			key: this.toBase64(key),
+			nonce: this.toBase64(nonce),
+			cipher: this.toBase64(cipher)
 		};
 	}
 
-	public symmetricDecrypt(key: any, nonce: any, cypherText: any): any {
-		let message: any = this.sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+	public symmetricDecrypt(cipher: any, key: any, nonce: any): any {
+		let payload: any = this.sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
 			null,
-			this.sodium.from_base64(
-				cypherText,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			this.fromBase64(cipher),
 			null,
-			this.sodium.from_base64(
-				nonce,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				key,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
+			this.fromBase64(nonce),
+			this.fromBase64(key)
 		);
-		return JSON.parse(this.sodium.to_string(message));
+		return JSON.parse(this.sodium.to_string(payload));
 	}
 
 	public generateSessionKeys(): any {
-		let { publicKey, privateKey }: any = this.sodium.crypto_kx_keypair();
+		let {publicKey: pk, privateKey: sk}: any = this.sodium.crypto_kx_keypair();
 		return {
-			publicKey: this.sodium.to_base64(
-				publicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			privateKey: this.sodium.to_base64(
-				privateKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			pk: this.toBase64(pk),
+			sk: this.toBase64(sk),
 		};
 	}
 
-	public generateSharedSessionKeysInitial(
-		sessionPublicKey: any,
-		sessionPrivateKey: any,
-		partnerPublicKey: any
+	public generateSharedSessionKeysRequest(
+		pk: any,
+		sk: any,
+		sender_pk: any
 	): any {
-		let { sharedRx, sharedTx }: any = this.sodium.crypto_kx_client_session_keys(
-			this.sodium.from_base64(
-				sessionPublicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				sessionPrivateKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				partnerPublicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
+		let { sharedRx: rx, sharedTx: tx }: any = this.sodium.crypto_kx_client_session_keys(
+			this.fromBase64(pk),
+			this.fromBase64(sk),
+			this.fromBase64(sender_pk)
 		);
 
 		return {
-			receiveKey: this.sodium.to_base64(
-				sharedRx,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			sendKey: this.sodium.to_base64(
-				sharedTx,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			rx: this.toBase64(rx),
+			tx: this.toBase64(tx),
 		};
 	}
 
 	public generateSharedSessionKeysResponse(
-		sessionPublicKey: any,
-		sessionPrivateKey: any,
-		partnerPublicKey: any
+		pk: any,
+		sk: any,
+		sender_pk: any
 	): any {
-		let { sharedRx, sharedTx }: any = this.sodium.crypto_kx_server_session_keys(
-			this.sodium.from_base64(
-				sessionPublicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				sessionPrivateKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				partnerPublicKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
+		let { sharedRx: rx, sharedTx: tx }: any = this.sodium.crypto_kx_server_session_keys(
+			this.fromBase64(pk),
+			this.fromBase64(sk),
+			this.fromBase64(sender_pk)
 		);
 
 		return {
-			receiveKey: this.sodium.to_base64(
-				sharedRx,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			sendKey: this.sodium.to_base64(
-				sharedTx,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			rx: this.toBase64(rx),
+			tx: this.toBase64(tx)
 		};
 	}
 
 	public sessionKeyDerivation(
 		key: any,
-		count: number,
+		cnt: number,
 		context: String = '___PRISM'
 	): any {
 		let derivedKey = this.sodium.crypto_kdf_derive_from_key(
 			this.sodium.crypto_kdf_KEYBYTES,
-			count,
+			cnt,
 			context,
-			this.sodium.from_base64(
-				key,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
+			this.fromBase64(key)
 		);
 
-		return this.sodium.to_base64(
-			derivedKey,
-			this.sodium.base64_variants.URLSAFE_NO_PADDING
-		);
+		return this.toBase64(derivedKey);
 	}
 
-	public prismEncrypt_Layer1(data: any, sharedSessionKeySend: any): any {
-		// Layer 1
-		// Encrypt data object symmetrically if type is MESSAGE.
-		const symmetricEncrypt = this.symmetricEncrypt(data, sharedSessionKeySend);
+	public layer0_encrypt(payload: any, tx: any): any {
+		const symmetricEncrypt = this.symmetricEncrypt(payload, tx);
 		return {
 			nonce: symmetricEncrypt.nonce,
-			cypherText: symmetricEncrypt.cypherText,
+			cipher: symmetricEncrypt.cipher,
 		};
 	}
 
-	public prismEncrypt_Layer2(
-		type: string,
-		count: number,
-		layer_1_nonce: any,
-		layer_1_cypherText: any,
-		recipientPublicIdentityKey: any
-	): any {
-		// Layer 2
-		// Encrypt data generated in layer 1 with crypto_secret_box to verify identity and encrypt sensitive data.
-		let layer_2_nonce = this.sodium.randombytes_buf(
-			this.sodium.crypto_box_NONCEBYTES
-		);
+	public layer0_decrypt(cipher: any, rx: any, nonce: any): any {
+		return this.symmetricDecrypt(cipher, rx, nonce);
+	}
 
-		let layer_2_cypherText = this.sodium.crypto_box_easy(
+	public layer1_encrypt(layer0_cipher: any, layer0_nonce: any, recipiantIpk: any, type: any, cnt: any): any {
+		let {nonce, cipher} = this.authenticatedAsymetricEncrypt(
 			JSON.stringify({
 				type: type,
 				date: Date.now(),
-				count: count,
-				nonce: layer_1_nonce,
-				data: layer_1_cypherText,
+				cnt: cnt,
+				nonce: layer0_nonce,
+				data: layer0_cipher,
 			}),
-			layer_2_nonce,
-			this.sodium.from_base64(
-				recipientPublicIdentityKey,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			this.sodium.from_base64(
-				this.IdentityKeys.private,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			)
+			recipiantIpk
 		);
 
 		return {
-			nonce: this.sodium.to_base64(
-				layer_2_nonce,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
-			cypherText: this.sodium.to_base64(
-				layer_2_cypherText,
-				this.sodium.base64_variants.URLSAFE_NO_PADDING
-			),
+			nonce: nonce,
+			cipher: cipher,
 		};
 	}
-	public prismEncrypt_Layer3(layer_2_nonce: any, layer_2_cypherText: any): any {
-		// Layer 3
-		// Encrypt data generated in layer 2 with a random symmetric key.
-		return this.symmetricEncrypt({
-			from: this.IdentityKeys.public,
-			nonce: layer_2_nonce,
-			data: layer_2_cypherText,
-		});
+
+	public layer1_decrypt(layer2_cipher: any, layer2_nonce: any, senderIpk: any): any {
+		const packet = JSON.parse(this.authenticatedAsymetricDecrypt(layer2_cipher, layer2_nonce, senderIpk));
+		return {
+			type: packet.type,
+			date: packet.date,
+			cnt: packet.cnt,
+			nonce: packet.nonce,
+			data: packet.data,
+		};
 	}
-	public prismEncrypt_Layer4(
-		layer_3_key: any,
-		layer_3_nonce: any,
-		layer_3_cypherText: any,
-		recipientPublicIdentityKey: any
-	): any {
-		// Layer 4
-		// Encrypt layer 3 obj with recipients public key.
-		let layer_4_cypherText: any = this.publicEncrypt(
-			{
-				key: layer_3_key,
-				nonce: layer_3_nonce,
-			},
-			recipientPublicIdentityKey
+
+	public layer2_encrypt(layer1_cipher: any, layer1_nonce: any, recipiantIpk: any): any {
+		let cipher = this.unauthenticatedAsymetricEncrypt(
+			JSON.stringify({
+				from: this.Ipk,
+				nonce: layer1_nonce,
+				data: layer1_cipher,
+			}),
+			recipiantIpk
 		);
-
-		return `${layer_4_cypherText}:${layer_3_cypherText}`;
+		return cipher;
 	}
 
-	public prismDecrypt_Layer1(
-		nonce: any,
-		cypherText: any,
-		sharedSessionKeyReceive: any
-	): any {
-		return this.symmetricDecrypt(sharedSessionKeyReceive, nonce, cypherText);
+	public layer2_decrypt(cipher: any): any {
+		let payload = JSON.parse(this.unauthenticatedAsymetricDecrypt(cipher));
+		return payload;
 	}
 
-	public prismDecrypt_Layer2(nonce: any, cypherText: any, from: any): any {
-		const symmetricDecrypted = JSON.parse(
-			this.sodium.to_string(
-				this.sodium.crypto_box_open_easy(
-					this.sodium.from_base64(
-						cypherText,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					),
-					this.sodium.from_base64(
-						nonce,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					),
-					this.sodium.from_base64(
-						from,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					),
-					this.sodium.from_base64(
-						this.IdentityKeys.private,
-						this.sodium.base64_variants.URLSAFE_NO_PADDING
-					)
-				)
-			)
-		);
-		return {
-			type: symmetricDecrypted.type,
-			count: symmetricDecrypted.count,
-			date: symmetricDecrypted.date,
-			nonce: symmetricDecrypted.nonce,
-			cypherText: symmetricDecrypted.data,
-		};
+	public layer_encrypt(packet: any, tx: any, recipiantIpk: any, type: any, cnt: any): any {
+		let layer0_encrypt: any = this.layer0_encrypt(packet, tx);
+		let layer1_encrypt: any = this.layer1_encrypt(layer0_encrypt.cipher, layer0_encrypt.nonce, recipiantIpk, type, cnt);
+		let layer2_encrypt: any = this.layer2_encrypt(layer1_encrypt.cipher, layer1_encrypt.nonce, recipiantIpk);
+		return layer2_encrypt;
 	}
-	public prismDecrypt_Layer3(nonce: any, key: any, cypherText: any): any {
-		let symmetricDecrypt = this.symmetricDecrypt(key, nonce, cypherText);
-		return {
-			from: symmetricDecrypt.from,
-			nonce: symmetricDecrypt.nonce,
-			cypherText: symmetricDecrypt.data,
-		};
-	}
-	public prismDecrypt_Layer4(dataObj: any): any {
-		let [layer_4_cypherText, layer_3_cypherText] = dataObj.split(':');
-		let layer_4_dataObj = this.publicDecrypt(layer_4_cypherText);
-		return {
-			nonce: layer_4_dataObj.nonce,
-			key: layer_4_dataObj.key,
-			cypherText: layer_3_cypherText,
-		};
+
+	public layer_decrypt(cipher: any): any {
+		let layer2_decrypt: any = this.layer2_decrypt(cipher);
+		let layer1_decrypt: any = this.layer1_decrypt(layer2_decrypt.data, layer2_decrypt.nonce, layer2_decrypt.from);
+		
+		// Because the sender is only known after layer2 decryption, you must perform the layer0 decryption manually.
+		return layer1_decrypt;
 	}
 }
