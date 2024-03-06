@@ -43,8 +43,8 @@ export class Prism {
 		this._Ipk = this.toBase64(Ipk);
 		this._Isk = this.toBase64(Isk);
 		return {
-			Ipk: this._Ipk,
-			Isk: this._Ipk
+			Ipk: this.Ipk,
+			Isk: this.Isk
 		};
 	}
 
