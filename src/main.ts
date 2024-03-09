@@ -231,32 +231,59 @@ export class Prism {
 		};
 	}
 
-	public layer2_encrypt(layer1_cipher: any, layer1_nonce: any, recipiantIpk: any): any {
+	public layer2_encrypt(layer1_cipher: any, layer1_nonce: any): any {
+
+		const {key, nonce, cipher} = this.symmetricEncrypt({
+			from: this.Ipk,
+			nonce: layer1_nonce,
+			data: layer1_cipher,
+		});
+
+		return {
+			key,
+			nonce,
+			cipher
+		};
+	}
+
+	public layer2_decrypt(cipher: any, key: any, nonce: any): any {
+		return this.symmetricDecrypt(cipher, key, nonce);
+	}
+
+	public layer3_encrypt(layer2_cipher: any, layer2_nonce: any, layer2_key: any, recipiantIpk: any): any {
 		let cipher = this.unauthenticatedAsymetricEncrypt(
 			JSON.stringify({
-				from: this.Ipk,
-				nonce: layer1_nonce,
-				data: layer1_cipher,
+				key: layer2_key,
+				nonce: layer2_nonce
 			}),
 			recipiantIpk
 		);
-		return cipher;
+		return {
+			keyCipher: cipher,
+			dataCipher: layer2_cipher
+		};
 	}
 
-	public layer2_decrypt(cipher: any): any {
-		let payload = JSON.parse(this.unauthenticatedAsymetricDecrypt(cipher));
-		return payload;
+	public layer3_decrypt(keyCipher: any, dataCipher: any): any {
+		let payload = JSON.parse(this.unauthenticatedAsymetricDecrypt(keyCipher));
+		return {
+			key: payload.key,
+			nonce: payload.nonce,
+			cipher: dataCipher
+		};
 	}
 
 	public layer_encrypt(packet: any, tx: any, recipiantIpk: any, type: any, cnt: any): any {
 		let layer0_encrypt: any = this.layer0_encrypt(packet, tx);
 		let layer1_encrypt: any = this.layer1_encrypt(layer0_encrypt.cipher, layer0_encrypt.nonce, recipiantIpk, type, cnt);
-		let layer2_encrypt: any = this.layer2_encrypt(layer1_encrypt.cipher, layer1_encrypt.nonce, recipiantIpk);
-		return layer2_encrypt;
+		let layer2_encrypt: any = this.layer2_encrypt(layer1_encrypt.cipher, layer1_encrypt.nonce);
+		let layer3_encrypt: any = this.layer3_encrypt(layer2_encrypt.cipher, layer2_encrypt.nonce, layer2_encrypt.key, recipiantIpk);
+		return layer3_encrypt;
 	}
 
-	public layer_decrypt(cipher: any): any {
-		let layer2_decrypt: any = this.layer2_decrypt(cipher);
+	public layer_decrypt(keyCipher: any, dataCipher: any): any {
+		let layer3_decrypt: any = this.layer3_decrypt(keyCipher, dataCipher);
+		let layer2_decrypt: any = this.layer2_decrypt(layer3_decrypt.cipher, layer3_decrypt.key, layer3_decrypt.nonce);
 		let layer1_decrypt: any = this.layer1_decrypt(layer2_decrypt.data, layer2_decrypt.nonce, layer2_decrypt.from);
 		
 		// Because the sender is only known after layer2 decryption, you must perform the layer0 decryption manually.

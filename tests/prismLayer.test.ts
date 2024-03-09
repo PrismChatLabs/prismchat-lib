@@ -126,10 +126,46 @@ test('Layer2', async () => {
 	let layer1_encrypt: any = Alice.layer1_encrypt(layer0_encrypt.cipher, layer0_encrypt.nonce, Bob.Ipk, "m", aliceSession.cnt);
 
 	// Layer 2 encrypt (Alice)
-	let layer2_encrypt: any = Alice.layer2_encrypt(layer1_encrypt.cipher, layer1_encrypt.nonce, Bob.Ipk);
+	let layer2_encrypt: any = Alice.layer2_encrypt(layer1_encrypt.cipher, layer1_encrypt.nonce);
 
 	// layer 2 decrypt (Bob)
-	let layer2_decrypt: any = Bob.layer2_decrypt(layer2_encrypt);
+	let layer2_decrypt: any = Bob.layer2_decrypt(layer2_encrypt.cipher, layer2_encrypt.key, layer2_encrypt.nonce);
+
+	// layer 1 decrypt (Bob)
+	let layer1_decrypt: any = Bob.layer1_decrypt(layer2_decrypt.data, layer2_decrypt.nonce, Alice.Ipk);
+
+	// layer 0 decrypt (Bob)
+	let bob_rx_subkey = Bob.sessionKeyDerivation(bobSession.rx, layer1_decrypt.cnt);
+	let decryptedData: any = Bob.layer0_decrypt(layer1_decrypt.data, bob_rx_subkey, layer1_decrypt.nonce);
+
+	expect(decryptedData).toStrictEqual(data);
+});
+
+test('Layer3', async () => {
+	let data = {
+		message: 'Hello World!',
+	};
+
+	// Layer 0 encrypt (Alice)
+	aliceSession.cnt ++;
+
+	let alice_tx_subkey = Alice.sessionKeyDerivation(aliceSession.tx, aliceSession.cnt);
+	let layer0_encrypt: any = Alice.layer0_encrypt(data, alice_tx_subkey);
+
+	// Layer 1 encrypt (Alice)
+	let layer1_encrypt: any = Alice.layer1_encrypt(layer0_encrypt.cipher, layer0_encrypt.nonce, Bob.Ipk, "m", aliceSession.cnt);
+
+	// Layer 2 encrypt (Alice)
+	let layer2_encrypt: any = Alice.layer2_encrypt(layer1_encrypt.cipher, layer1_encrypt.nonce);
+
+	// Layer 3 encrypt (Alice)
+	let layer3_encrypt: any = Alice.layer3_encrypt(layer2_encrypt.cipher, layer2_encrypt.nonce, layer2_encrypt.key, Bob.Ipk);
+
+	// layer 3 decrypt (Bob)
+	let layer3_decrypt: any = Bob.layer3_decrypt(layer3_encrypt.keyCipher, layer3_encrypt.dataCipher);
+
+	// layer 2 decrypt (Bob)
+	let layer2_decrypt: any = Bob.layer2_decrypt(layer3_decrypt.cipher, layer3_decrypt.key, layer3_decrypt.nonce);
 
 	// layer 1 decrypt (Bob)
 	let layer1_decrypt: any = Bob.layer1_decrypt(layer2_decrypt.data, layer2_decrypt.nonce, Alice.Ipk);
@@ -150,10 +186,10 @@ test('Layer FULL', async () => {
 	aliceSession.cnt ++;
 
 	let alice_tx_subkey = Alice.sessionKeyDerivation(aliceSession.tx, aliceSession.cnt);
-	let cipher: any = Alice.layer_encrypt(data, alice_tx_subkey, Bob.Ipk, 'm', aliceSession.cnt);
+	let {keyCipher, dataCipher}: any = Alice.layer_encrypt(data, alice_tx_subkey, Bob.Ipk, 'm', aliceSession.cnt);
 
 	// layer 1 decrypt (Bob)
-	let layer1_decrypt: any = Bob.layer_decrypt(cipher);
+	let layer1_decrypt: any = Bob.layer_decrypt(keyCipher, dataCipher);
 
 	// layer 0 decrypt (Bob)
 	let bob_rx_subkey = Bob.sessionKeyDerivation(bobSession.rx, layer1_decrypt.cnt);
