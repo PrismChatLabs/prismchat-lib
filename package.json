@@ -1,6 +1,6 @@
 {
   "name": "prismchat-lib",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "The Prism Chat Library for E2E, anonymous and decentralized communication built on libsodium.",
   "main": "build/main.js",
   "types": "build/main.d.ts",

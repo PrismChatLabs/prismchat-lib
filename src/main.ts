@@ -252,10 +252,7 @@ export class Prism {
 
 	public layer3_encrypt(layer2_cipher: any, layer2_nonce: any, layer2_key: any, recipiantIpk: any): any {
 		let cipher = this.unauthenticatedAsymetricEncrypt(
-			JSON.stringify({
-				key: layer2_key,
-				nonce: layer2_nonce
-			}),
+			`${layer2_key}:${layer2_nonce}`,
 			recipiantIpk
 		);
 		return {
@@ -265,10 +262,13 @@ export class Prism {
 	}
 
 	public layer3_decrypt(keyCipher: any, dataCipher: any): any {
-		let payload = JSON.parse(this.unauthenticatedAsymetricDecrypt(keyCipher));
+		let payload = this.unauthenticatedAsymetricDecrypt(keyCipher);
+
+		const [key, nonce] = payload.split(':');
+
 		return {
-			key: payload.key,
-			nonce: payload.nonce,
+			key: key,
+			nonce: nonce,
 			cipher: dataCipher
 		};
 	}
